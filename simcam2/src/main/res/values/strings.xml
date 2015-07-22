@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Simcam2</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="auto_focus">A_Focus</string>
+    <string name="manual_focus">M_Focus</string>
+</resources>

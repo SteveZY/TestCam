@@ -1,0 +1,2 @@
+include ':app', ':simcam', ':simcam2'
+include ':camera2'

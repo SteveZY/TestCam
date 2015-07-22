@@ -1,0 +1,69 @@
+apply plugin: 'com.android.application'
+android {
+    compileSdkVersion 21
+    buildToolsVersion "23.0.0 rc2"
+
+    defaultConfig {
+        applicationId "com.android.camera2"
+        minSdkVersion 21
+        targetSdkVersion 21
+
+//        ndk {
+//            moduleName "libjni_tinyplanet"
+//            ldLibs "log","jnigraphics"
+//            abiFilters "x86"
+//        }
+//        ndk {
+//            moduleName "libjni_jpegutil"
+//            ldLibs "log","jpeg","dl"
+//            abiFilters "x86"
+//        }
+        testApplicationId "com.android.camera.tests"
+        testInstrumentationRunner "android.test.InstrumentationTestRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+        }
+    }
+    sourceSets {
+        main {
+            //res.srcDirs= ['res','res_p']
+//            java.srcDirs = ['java','src_pd']
+            jni.srcDirs = []//prevent the auto generation of Android.mk
+            jniLibs.srcDirs = ['libs']
+        }
+    }
+    task buildNative(type: Exec, description: 'Compile JNI source via NDK') {
+        //def ndkDir = android.plugin.ndkFolder // if this doesn't work try the following
+        def ndkDir = plugins.getPlugin('com.android.application').sdkHandler.getNdkFolder()
+        commandLine "$ndkDir/ndk-build",
+                '-C', file('src/main/jni').absolutePath, // Change src/main/jni the relative path to your jni source
+                '-j', Runtime.runtime.availableProcessors(),
+                'all',
+                'NDK_DEBUG=1'
+    }
+    tasks.withType(JavaCompile) {
+        compileTask -> compileTask.dependsOn buildNative
+    }
+    productFlavors{
+        flavor1{
+            //packageName "com.android.cameraf1"
+            versionCode 10
+        }
+        flavor2{
+            //packageName "com.android.cameraf2"
+            minSdkVersion 11
+        }
+    }
+}
+
+dependencies {
+    compile files('libs/portability.jar')
+    compile files('libs/glide.jar')
+    compile files('libs/littlemock.jar')
+    compile files('libs/xmp_toolkit.jar')
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+}

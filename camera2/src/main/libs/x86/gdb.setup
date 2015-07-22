@@ -1,0 +1,3 @@
+set solib-search-path /diskb/yong/appprj/RefCam1/camera2/src/main/obj/local/x86
+source /diskb/yong/ndk/android-ndk-r10d/prebuilt/common/gdb/common.setup
+directory /diskb/yong/ndk/android-ndk-r10d/platforms/android-9/arch-x86/usr/include /diskb/yong/ndk/android-ndk-r10d/sources/android/support/include /diskb/yong/ndk/android-ndk-r10d/sources/cxx-stl/llvm-libc++ /diskb/yong/ndk/android-ndk-r10d/sources/android/compiler-rt external/jpeg /diskb/yong/ndk/android-ndk-r10d/sources/cxx-stl/llvm-libc++/libcxx/include /diskb/yong/ndk/android-ndk-r10d/sources/cxx-stl/llvm-libc++/../gabi++/include /diskb/yong/ndk/android-ndk-r10d/sources/cxx-stl/llvm-libc++/../../android/support/include /diskb/yong/appprj/RefCam1/camera2/src/main/jni
