@@ -1,7 +1,10 @@
 package com.zyz.yzhan78.simcam2;
 
 import android.app.Activity;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
+import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -9,21 +12,39 @@ import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.CaptureRequest.Builder;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.media.Image;
+import android.media.ImageReader;
+import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
+import android.media.MediaCodecList;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.PersistableBundle;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.util.Size;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.Surface;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.SeekBar;
 import android.os.Handler;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.List;
 
 import android.view.SurfaceHolder;
 import android.widget.TextView;
@@ -42,13 +63,20 @@ public class Cam2Activity extends Activity {
 
     private CameraManager cm = null;
     private Handler mHdlr = null;
-    private CameraCaptureSession.StateCallback mCaptureCallback;
-    private CaptureRequest.Builder mPrevBuilder;
+    private CameraCaptureSession.StateCallback mSessionSttCb;
+    private Builder mPrevBuilder;
     private Size mPrevSize = new Size(100, 100);
     private CameraCaptureSession mCapSession = null;
     private TextView mTv = null;
     private Float mMinFocusD;
     private CameraCaptureSession.CaptureCallback mCapcb;
+    private Button mBtnCapture;
+    private ImageReader mImgReader;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState, PersistableBundle persistentState) {
+        super.onCreate(savedInstanceState, persistentState);
+    }
 
     public CameraManager getCameraManager() {
         return cm;
@@ -69,6 +97,7 @@ public class Cam2Activity extends Activity {
         super.onPause();
         try {
             mCapSession.stopRepeating();
+            mCapSession.abortCaptures();
             mCapSession.close();
             mCamDev.close();
         } catch (CameraAccessException e) {
@@ -81,7 +110,8 @@ public class Cam2Activity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        fBtn = (Button) findViewById(R.id.button_capture);
+        //displayCodecsInfo();
+        fBtn = (Button) findViewById(R.id.button_autof);
         if (mCamPresent) {
 //            numOfCam = Camera.getNumberOfCameras();
             Log.d(TAG, "add preview to main layout and prepare for preview");
@@ -107,6 +137,7 @@ public class Cam2Activity extends Activity {
                     } else {
                         mPrevBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureResult.CONTROL_AF_MODE_AUTO);
                         mPrevBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureResult.CONTROL_AF_TRIGGER_START);
+                        //mPrevBuilder.set(CaptureRequest.CONTROL_SCENE_MODE_);
                         Log.d(TAG, "enable auto focus");
                         ((Button) v).setText(R.string.auto_focus);
                     }
@@ -123,6 +154,8 @@ public class Cam2Activity extends Activity {
 //                    });
                 }
             });
+
+
         } else {
             Log.d(TAG, "no cam feature");
         }
@@ -145,8 +178,9 @@ public class Cam2Activity extends Activity {
         mCamPresent = checkCamHW();
         setContentView(R.layout.activity_cam2);
         pBar = (SeekBar) findViewById(R.id.seekBar);
-        //pBar.getMax()
-        mHdlr = new Handler();       //{
+        mBtnCapture = (Button) findViewById(R.id.button_capture);
+        mImgReader = ImageReader.newInstance(1600, 1200, ImageFormat.JPEG, 3);
+        mHdlr = new Handler();
 //            @Override
 //            public void close() {
 //
@@ -163,7 +197,7 @@ public class Cam2Activity extends Activity {
 //            }
 //        };
         mTv = (TextView) findViewById(R.id.textView);
-        mCaptureCallback = new CameraCaptureSession.StateCallback() {
+        mSessionSttCb = new CameraCaptureSession.StateCallback() {
             @Override
             public void onConfigured(CameraCaptureSession session) {
                 try {
@@ -222,15 +256,81 @@ public class Cam2Activity extends Activity {
                 Log.d(TAG, "Stop Touching!");
             }
         });
+        mBtnCapture.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.d(TAG, "capture is clicked");
+                if (null != mCapSession) {
 
+                    try {
+                        mCapSession.capture(mCapBuilder.build(), mCapcb, mHdlr);
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+
+        mImgReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
+            @Override
+            public void onImageAvailable(ImageReader reader) {
+
+                String picFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).toString();
+                Log.d(TAG, "Image is available and pic folder is " + picFolder);
+                File file = new File(picFolder+"/Camera", "imgbyyong.jpg");
+                ContentResolver cr = getContentResolver();
+                Image img = reader.acquireNextImage();
+                ByteBuffer jpgBuf = img.getPlanes()[0].getBuffer();
+
+                byte[] jpgData = new byte[jpgBuf.capacity()];
+                jpgBuf.get(jpgData);
+                FileOutputStream fout = null;
+                try {
+                    file.createNewFile();
+                    if(!file.canWrite())
+                        return;
+                    fout = new FileOutputStream(file);
+                    fout.write(jpgData);
+                    //update content resolver
+                    ContentValues values = new ContentValues(9);
+                    values.put(MediaStore.Images.ImageColumns.TITLE, "imgbyyong");
+                    values.put(MediaStore.Images.ImageColumns.DISPLAY_NAME, "imgbyyong.jpg");
+                    values.put(MediaStore.Images.ImageColumns.DATE_TAKEN, System.currentTimeMillis());
+                    values.put(MediaStore.Images.ImageColumns.MIME_TYPE, "image/jpeg");
+                    // Clockwise rotation in degrees. 0, 90, 180, or 270.
+                    values.put(MediaStore.Images.ImageColumns.ORIENTATION, "90");
+                    values.put(MediaStore.Images.ImageColumns.DATA, picFolder+"/Camera/"+"imgbyyong.jpg");
+                    values.put(MediaStore.Images.ImageColumns.SIZE, jpgData.length);
+                    cr.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,values);
+                    //fout.close();
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    if (fout != null) {
+                        try {
+                            fout.close();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+
+                img.close();
+            }
+        }, mHdlr);
     }
 
     //@Override
     //to be called by Cap Session callback once session configured(in onConfigured)
+
     private void updatePreview(CameraCaptureSession session) throws CameraAccessException {
         Log.d(TAG, "updatePreview");
 
         session.setRepeatingRequest(mPrevBuilder.build(), mCapcb, mHdlr);
+
 
     }
 
@@ -268,6 +368,7 @@ public class Cam2Activity extends Activity {
         try {
             String ids[];
             ids = cm.getCameraIdList();
+            if(ids == null) return false;
             CameraCharacteristics cc = cm.getCameraCharacteristics(ids[0]);
             StreamConfigurationMap map = cc.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             //boolean ss = cc.get(CameraCharacteristics.CONTROL_SCENE_MODE_)
@@ -281,42 +382,97 @@ public class Cam2Activity extends Activity {
             //cm.openCamera(ids[0], mCameraStLsnr, mHdlr);
             return true;
 
-        } catch (CameraAccessException e) {
+        } catch (/*CameraAccessException*/Exception e) {
             return false;
         }
     }
 
-    private CameraDevice.StateCallback mCameraStLsnr = new CameraDevice.StateCallback() {
-        @Override
-        public void onOpened(CameraDevice camera) {//start the preview
-            Log.d(TAG, "CameraDevice DeviceStsCB onOpend.");
-            mCamDev = camera;
-            mPreview.getHolder().setFixedSize(mPrevSize.getWidth(), mPrevSize.getHeight());
-            try {
-                mPrevBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            } catch (CameraAccessException e) {
-                e.printStackTrace();
+    private Builder mCapBuilder;
+    private CameraDevice.StateCallback mCameraStLsnr;
+
+    private Builder mVideoBuilder;
+
+    {
+        mCameraStLsnr = new CameraDevice.StateCallback() {
+            @Override
+            public void onOpened(CameraDevice camera) {//start the preview
+                Log.d(TAG, "CameraDevice DeviceStsCB onOpend.");
+                ArrayList<Surface> oSurface = new ArrayList<Surface>();
+                mCamDev = camera;
+                mPreview.getHolder().setFixedSize(mPrevSize.getWidth(), mPrevSize.getHeight());
+                try {
+                    mPrevBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+                    mCapBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+                    mVideoBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
+                } catch (CameraAccessException e) {
+                   e.printStackTrace();
+                }
+
+                oSurface.add(mPreview.getHolder().getSurface());
+                oSurface.add(mImgReader.getSurface());
+
+                mPrevBuilder.addTarget(mPreview.getHolder().getSurface());
+                mCapBuilder.addTarget(mImgReader.getSurface());
+
+                //create capture session
+                try {
+                    camera.createCaptureSession(oSurface/*Arrays.asList(mPreview.getHolder().getSurface())*/,
+                            mSessionSttCb, mHdlr);
+                } catch (CameraAccessException e) {
+                    Log.d(TAG, "failed when create Capture Session");
+                    e.printStackTrace();
+                }
+
             }
-            mPrevBuilder.addTarget(mPreview.getHolder().getSurface());
-            //mMinFocus = mPrevBuilder.get(CaptureResult.)
-            try {
-                camera.createCaptureSession(Arrays.asList(mPreview.getHolder().getSurface()),
-                        mCaptureCallback, mHdlr);
-            } catch (CameraAccessException e) {
-                Log.d(TAG, "failed when create Capture Session");
-                e.printStackTrace();
+
+            @Override
+            public void onDisconnected(CameraDevice camera) {
+                Log.d(TAG, "CameraDevice StsCB onDisconnnected.");
             }
 
+            @Override
+            public void onError(CameraDevice camera, int error) {
+                Log.d(TAG, "CameraDevice StsCB onError:" + error);
+            }
+        };
+    }
+
+    private void displayCodecsInfo(){
+        StringBuffer types = new StringBuffer() ;
+        MediaCodecList mcl = new MediaCodecList(MediaCodecList.ALL_CODECS);
+        MediaCodecInfo[]  infoCodecs = mcl.getCodecInfos();
+        MediaCodecInfo.CodecCapabilities ccap;
+        MediaCodecInfo.EncoderCapabilities encCap;
+        MediaCodecInfo.VideoCapabilities vidCap;
+        //List<MediaCodecInfo> cl= Arrays.asList(infoCodecs);
+        Log.i(TAG, "Enumeration all the codecs...");
+        for(MediaCodecInfo ci: infoCodecs /*cl*/){
+
+            for(String t : ci.getSupportedTypes()){
+                if(t.contains("video")) {
+                    StringBuffer pl = new StringBuffer();
+                    types.append(t);
+                    //types.append(":");
+                 //   Log.i(TAG, "Type is: " + (ci.isEncoder() ? "encoder" : "decoder"));
+                    Log.i(TAG, "The supported type of this "+ (ci.isEncoder() ? "Encoder" : "Decoder") + " is: " + types);// + " P/L:"+ ccap.profileLevels);
+                    /*if(ci.isEncoder())*/ {//an encoder
+                        ccap = ci.getCapabilitiesForType(t);
+                        encCap = ccap.getEncoderCapabilities();
+                        vidCap = ccap.getVideoCapabilities();
+                        for(MediaCodecInfo.CodecProfileLevel cpl : ccap.profileLevels){
+                            pl.append(cpl.profile + "/" +cpl.level + " ");
+                        }
+                        Log.i(TAG, " P/L:" + pl);//ccap.profileLevels[0].profile+"/"+ccap.profileLevels[0].level );
+                        pl.setLength(0);
+                        Log.i(TAG,"Bitrates - "+vidCap.getBitrateRange());
+                        Log.i(TAG,"Framerate - "+vidCap.getSupportedFrameRates());
+                        Log.i(TAG,"Heights - "+vidCap.getSupportedHeights());
+                        Log.i(TAG,"Widths - "+vidCap.getSupportedWidths());
+                    }
+                }
+            }
+            types.setLength(0);
         }
 
-        @Override
-        public void onDisconnected(CameraDevice camera) {
-            Log.d(TAG, "CameraDevice StsCB onDisconnnected.");
-        }
-
-        @Override
-        public void onError(CameraDevice camera, int error) {
-            Log.d(TAG, "CameraDevice StsCB onError:" + error);
-        }
-    };
+    }
 }

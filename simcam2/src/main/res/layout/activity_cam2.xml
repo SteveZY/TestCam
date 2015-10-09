@@ -17,43 +17,56 @@
     >
     <FrameLayout
         android:id="@+id/camera_preview"
-        android:layout_width="1200px"
-        android:layout_height="1600px"
-        android:layout_weight="0"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+
+        android:layout_weight="3"
         android:layout_gravity="center"
         >
 
     </FrameLayout>
 
     <RelativeLayout
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:layout_weight="0"
         android:visibility="visible"
         android:layout_gravity="center">
 
         <SeekBar
-            android:layout_width="500px"
-            android:layout_height="fill_parent"
+            android:layout_width="400dp"
+            android:layout_height="wrap_content"
             android:id="@+id/seekBar"
             android:layout_gravity="center_horizontal"
             android:layout_weight="0"
             android:layout_alignParentBottom="true"
             android:max="1023"
-            android:layout_alignParentEnd="false" />
+            android:layout_alignParentEnd="false"
+            android:progressDrawable="@drawable/seekbar_style"
+            android:thumb="@drawable/mythumb"
+            android:thumbOffset="0dp"/>
 
         <Button
-            android:id="@+id/button_capture"
+            android:id="@+id/button_autof"
             android:text="@string/auto_focus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="right"
             android:layout_alignParentBottom="true"
-            android:layout_alignParentRight="true" />
+            android:layout_alignParentRight="true"
+            />
+        <Button
+            android:id="@+id/button_capture"
+            android:text="@string/capture"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toLeftOf="@id/button_autof"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentRight="false" />
 
         <TextView
             android:layout_width="wrap_content"
-            android:layout_height="fill_parent"
+            android:layout_height="wrap_content"
             android:textAppearance="?android:attr/textAppearanceSmall"
             android:text="100"
             android:id="@+id/textView"
@@ -62,6 +75,7 @@
             android:layout_weight="0"
             android:layout_alignParentBottom="true"
             android:layout_centerHorizontal="true"
+            android:layout_toRightOf="@id/seekBar"
             />
 
     </RelativeLayout>

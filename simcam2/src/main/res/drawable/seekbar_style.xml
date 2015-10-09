@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">-->
+
+<!--</PreferenceScreen>-->
+
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@android:id/progress">
+        <clip>
+            <shape android:shape="rectangle">
+                <corners android:radius="2dip" />
+                <gradient android:startColor="#80000000" android:width="10dp"
+                    android:centerColor="#7e209e" android:centerY="0.5" android:angle="90"
+                    android:endColor="#80000000" />
+                <stroke android:width="10dp" android:color="#80000000"
+                    android:dashWidth="1dp" android:dashGap="1dp" />
+            </shape>
+        </clip>
+    </item>
+</layer-list>
